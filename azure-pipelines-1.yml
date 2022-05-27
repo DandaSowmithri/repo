@@ -11,21 +11,20 @@ pool:
 
 steps:
 -task: TerraformTaskV1@0 
-   inputs:
-     provider: 'azurerm'
+  inputs :
+provider: 'azurerm'
 
      command: 'init'
 
      workingDirectory: 'StorageAccount-Terraform'
 
-     backendServiceArm: 'your_subscription'
+     backendServiceArm: 'LTTS_DEVOPS (488407a5-b2e4-4437-a2df-ae3d974d0375)'
 
-     backendAzureRmResourceGroupName: 'your_resource_group_name'
+     backendAzureRmResourceGroupName: 'dev2'
 
-     backendAzureRmStorageAccountName: 'your_storage_account_name'
+     backendAzureRmStorageAccountName: 'partsunlimited'
 
-     backendAzureRmContainerName: 'your_container_name'
-
+     backendAzureRmContainerName: 'testcontainer1'
      backendAzureRmKey: 'tf/terraform.tfstate'
 
 -task: TerraformTaskV1@0 
