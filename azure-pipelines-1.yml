@@ -1,0 +1,76 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+parameters:
+- name: serviceName
+  type: string
+- name: TerraformDirectory
+  type: string
+- name: AzureSubscriptionServiceConnectionName
+  type: string
+- name: TerraformStateStorageAccountResourceGroupName
+  type: string
+- name: TerraformStateStorageAccountName
+  type: string
+- name: TerraformStateStorageAccountContainerName
+  type: string
+
+steps:
+  - task: TerraformCLI@0
+    displayName: 'Terraform : init'
+    inputs:
+      command: init
+      backendType: azurerm
+      workingDirectory: ${{ parameters.TerraformDirectory }}
+      backendServiceArm: ${{ parameters.AzureSubscriptionServiceConnectionName }}
+      backendAzureRmResourceGroupName: ${{ parameters.TerraformStateStorageAccountResourceGroupName }}
+      backendAzureRmStorageAccountName: ${{ parameters.TerraformStateStorageAccountName }}
+      backendAzureRmContainerName: ${{ parameters.TerraformStateStorageAccountContainerName }}
+      backendAzureRmKey: ${{ parameters.serviceName }}.tfstate
+
+parameters:
+- name: TerraformDirectory
+  type: string
+- name: AzureSubscriptionServiceConnectionName
+  type: string
+- name: commandOptions
+  default: '-out=$(System.DefaultWorkingDirectory)/terraform.tfplan -detailed-exitcode'
+- name: additionalParameters
+  type: object
+  default: []
+
+steps:
+    - task: TerraformCLI@0
+      displayName: 'Terraform : plan'
+      inputs:
+        command: plan
+        workingDirectory: ${{ parameters.TerraformDirectory }}
+        publishPlanResults: ${{ parameters.AzureSubscriptionServiceConnectionName }}
+        environmentServiceName: ${{ parameters.AzureSubscriptionServiceConnectionName }}
+        commandOptions: ${{ parameters.commandOptions }}
+
+parameters:
+- name: TerraformDirectory
+  type: string
+- name: AzureSubscriptionServiceConnectionName
+  type: string
+- name: additionalParameters
+  type: object
+  default: []
+  
+steps:
+- task: TerraformCLI@0
+  displayName: 'Terraform : apply'
+  condition: and(succeeded(), eq(variables['TERRAFORM_PLAN_HAS_CHANGES'],'true'))
+  inputs:
+    command: apply
+    workingDirectory: ${{ parameters.TerraformDirectory }}
+    commandOptions: '$(System.DefaultWorkingDirectory)/terraform.tfplan'
+    environmentServiceName: ${{ parameters.AzureSubscriptionServiceConnectionName }}
