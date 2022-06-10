@@ -1,0 +1,147 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+parameters:
+
+- name: terraformWorkingDirectory
+  type: string
+  default: '$(System.DefaultWorkingDirectory)/Terraform/'
+
+- name: serviceConnection
+  type: string
+  default: 'Terraform-saw'
+
+- name: azureSubscription
+  type: string
+  default: 'LTTS_DevOps(488407a5-b2e4-4437-a2df-ae3d974d0375)' 
+
+- name: appconnectionname
+  type: string
+  default: 'TSQuest-PartsUnlimited-488407a5-b2e4-4437-a2df-ae3d974d0375'
+- name: RG
+  type: string
+  default: 'terraform-rgg'
+
+- name: azureLocation
+  type: string
+  default: 'UK South'
+
+- name: terraformVersion
+  type: string
+  default: '1.0.4'
+
+- name: artifactName
+  type: string
+  default: 'Website'
+
+#- name: authartifactName
+ # type: string
+  #default: 'AuthServer'
+
+
+# Only run against develop
+#trigger:
+ # branches:
+  #  include:
+    #  - main
+
+#pool:
+  #vmImage: "ubuntu-latest"
+
+# Don't run against PRs
+#pr: none
+
+#stages:
+
+#- stage: terraformStage
+#  displayName: Detect Drift
+
+ # jobs:
+  #- job: terraform_plan_and_apply
+
+steps:
+ - checkout: self
+
+ - task: TerraformInstaller@0
+   displayName: "install"
+   inputs:
+     terraformVersion: ${{ parameters.terraformVersion }}
+
+ - task: TerraformTaskV2@2
+   displayName: "init"
+   inputs:
+     provider: "azurerm"
+     command: "init"
+     backendServiceArm: ${{ parameters.serviceConnection }}
+     backendAzureRmResourceGroupName: "TerraformBackendForCICTesting"
+     backendAzureRmStorageAccountName: "nsterraformstatestorage"
+     backendAzureRmContainerName: "devopsterraformstatefile"
+     backendAzureRmKey: "terraform.tfstate"
+     workingDirectory: ${{ parameters.terraformWorkingDirectory }}
+
+ - task: TerraformTaskV1@0
+   displayName: "plan"
+   inputs:
+     provider: "azurerm"
+     command: "plan"
+     commandOptions: "-input=false"
+     environmentServiceNameAzureRM: ${{ parameters.serviceConnection }}
+     workingDirectory: ${{ parameters.terraformWorkingDirectory }}
+
+ - task: TerraformTaskV1@0
+   displayName: "apply"
+   inputs:
+     provider: "azurerm"
+     command: "apply"
+     commandOptions: "-input=false -auto-approve"
+     environmentServiceNameAzureRM: ${{ parameters.serviceConnection }}
+     workingDirectory: ${{ parameters.terraformWorkingDirectory }}
+
+  
+#- stage: put_pipelines_files_in_place
+#  displayName: Putting Pipeline Files In Place 
+
+#- jobs:
+  
+  #- job: apply_artifiact_to_web_app
+  #  displayName: Putting Files In Place 
+  #  dependsOn: terraform_plan_and_apply
+
+
+    # Download Artifact File
+  #- download: none
+ - task: DownloadPipelineArtifact@2 # Website Artifact
+   displayName: 'Download Build Artifacts'
+   inputs:
+     artifact: ${{ parameters.artifactName }}
+     patterns: '/website/**/*.zip'
+     path: '$(Build.ArtifactStagingDirectory)/website/'
+
+    # deploy to Azure Web App 
+ - task: AzureWebApp@1
+   displayName: 'Azure Web App Deploy: nsclassroom-dgyn27h2dfoyojc' #Website Deploy Artifact
+   inputs:
+     package: $(Build.ArtifactStagingDirectory)/website/**/*.zip 
+     azureSubscription: ${{ parameters.azureSubscription }}
+     ConnectedServiceName: ${{ parameters.appconnectionname}}
+     appName: 'nsclassroom-dgyn27h2dfoyojc'
+     ResourceGroupName: ${{ parameters.RG}}
+
+ - task: DownloadPipelineArtifact@2 # Authentication Server Artifact
+   displayName: 'Download Build Artifacts'
+   inputs:
+     artifact: ${{ parameters.artifactName}}
+     patterns: '/authsrv/**/*.zip'
+     path: '$(Build.ArtifactStagingDirectory)/authsrv/'
+
+    # deploy to Azure Web App 
+ - task: AzureWebApp@1
+   displayName: 'Azure Web App Deploy: nsclassroomauthentication-dgyn27h2dfoyojc' #Authentication Server Deploy Artifact
+   inputs:
+     package: $(Build.ArtifactStagingDirectory)/authsrv/**/*.zip 
+     azureSubscription: ${{ parameters.azureSubscription }}
+     ConnectedServiceName: ${{ parameters.appconnectionname}}
+     appName: 'nsclassroomauthentication-dgyn27h2dfoyojc'
+     ResourceGroupName: ${{ parameters.RG}}
