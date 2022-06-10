@@ -15,7 +15,7 @@ parameters:
 
 - name: azureSubscription
   type: string
-  default: 'LTTS_DevOps(488407a5-b2e4-4437-a2df-ae3d974d0375)' 
+  default: 'Terraform-saw' 
 
 - name: appconnectionname
   type: string
